@@ -1,0 +1,7 @@
+Your virtual machine that was running on OpenStack cloud is recovered as follows
+.
+
+Tenant:%TENANT_NAME%
+Tenant Administrator:%USER_NAME%
+Keypair:%KEY_NAME%
+Local IP:%FIXED_IP%

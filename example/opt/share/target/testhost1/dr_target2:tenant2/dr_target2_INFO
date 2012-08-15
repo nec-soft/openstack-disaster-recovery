@@ -1,0 +1,50 @@
++-------------------------------------+----------------------------------------------------------+
+|               Property              |                          Value                           |
++-------------------------------------+----------------------------------------------------------+
+| OS-DCF:diskConfig                   | MANUAL                                                   |
+| OS-EXT-SRV-ATTR:host                | testhost1                                                |
+| OS-EXT-SRV-ATTR:hypervisor_hostname | None                                                     |
+| OS-EXT-SRV-ATTR:instance_name       | instance-00000010                                        |
+| OS-EXT-STS:power_state              | 1                                                        |
+| OS-EXT-STS:task_state               | None                                                     |
+| OS-EXT-STS:vm_state                 | active                                                   |
+| accessIPv4                          |                                                          |
+| accessIPv6                          |                                                          |
+| config_drive                        |                                                          |
+| created                             | 2012-06-04T00:05:15Z                                     |
+| flavor                              | m1.tiny                                                  |
+| hostId                              | bc079b315f7e6ec787d2191c0e4339975ed22b73cffeebd9e7f6f585 |
+| id                                  | 0f2656f5-44b5-4ed5-b6be-f1953e3dfbb6                     |
+| image                               | tty                                                      |
+| key_name                            | testkey                                                  |
+| test-net network                    | 10.0.0.5                                                 |
+| metadata                            | {u'dr': u'yes'}                                          |
+| name                                | dr_target2                                               |
+| progress                            | 0                                                        |
+| status                              | ACTIVE                                                   |
+| tenant_id                           | 6a848126efbd40c79fc6dbfee906b952                         |
+| updated                             | 2012-07-08T16:00:55Z                                     |
+| user_id                             | 04ed916e87934f0c8a3ced6f1d04db7e                         |
++-------------------------------------+----------------------------------------------------------+
+URI: http://192.168.0.11:9292/v1/images/54e39420-3ed2-46a4-8a8d-b6ebf7e94ca9
+Id: 54e39420-3ed2-46a4-8a8d-b6ebf7e94ca9
+Public: No
+Protected: No
+Name: SNAP_dr_target2
+Status: active
+Size: 25165824
+Disk format: ami
+Container format: ami
+Minimum Ram Required (MB): 0
+Minimum Disk Required (GB): 0
+Owner: 6a848126efbd40c79fc6dbfee906b952
+Property 'instance_uuid': 0f2656f5-44b5-4ed5-b6be-f1953e3dfbb6
+Property 'image_location': snapshot
+Property 'image_state': available
+Property 'user_id': 04ed916e87934f0c8a3ced6f1d04db7e
+Property 'image_type': snapshot
+Property 'ramdisk_id': 7e65dce1-f5d2-4b0b-85ec-882f36efb0d2
+Property 'kernel_id': b67090d1-3b79-4832-a5b9-80d687aa7b29
+Property 'owner_id': 6a848126efbd40c79fc6dbfee906b952
+LOCATION_TMP swift+http://swift:swift@192.168.0.11:35357/v2.0/glance
+TENANT_NAME tenant2

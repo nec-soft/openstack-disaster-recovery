@@ -1,0 +1,5 @@
+export OS_AUTH_URL=http://192.168.10.21:5000/v2.0
+export OS_TENANT_ID=30ecf1bf5e284ab3993d9409569a6bb8
+export OS_TENANT_NAME=admin
+export OS_USERNAME=admin
+export OS_PASSWORD=password
