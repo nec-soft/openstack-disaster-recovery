@@ -1,5 +1,4 @@
-Your virtual machine that was running on OpenStack cloud is recovered as follows
-.
+Your virtual machine that was running on OpenStack cloud is recovered as follows.
 
 Tenant:%TENANT_NAME%
 Tenant Administrator:%USER_NAME%
