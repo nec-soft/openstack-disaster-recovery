@@ -3,7 +3,7 @@ OpenStack Disaster Recovery
 
 ## Description
 
-These shell scripts provide a function of instance disaster recovery on OpenStack.
+These shell scripts provide a function of instance disaster recovery between multiple OpenStacks.
 
 ## Documents
 
