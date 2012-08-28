@@ -1,0 +1,37 @@
+diff -Naru glance-orig/glance/api/v1/images.py glance/glance/api/v1/images.py
+--- glance-orig/glance/api/v1/images.py	2012-08-28 14:03:20.177648676 +0900
++++ glance/glance/api/v1/images.py	2012-08-28 14:07:02.505705545 +0900
+@@ -591,6 +591,19 @@
+                 and the request body is not application/octet-stream
+                 image data.
+         """
++        self._enforce(req, 'get_images')
++        params = self._get_query_params(req)
++        try:
++            images = registry.get_images_detail(req.context, **params)
++            for image in images:
++                if (image['name'] == image_meta.get('name') and
++                   (image['owner'] == req.context.tenant or
++                    image['is_public'] == True)):
++                    raise exception.ImageNameNotUnique(
++                                    name=image_meta.get('name'))
++        except exception.Invalid, e:
++            raise HTTPBadRequest(explanation="%s" % e)
++
+         self._enforce(req, 'add_image')
+         if image_meta.get('is_public'):
+             self._enforce(req, 'publicize_image')
+diff -Naru glance-orig/glance/common/exception.py glance/glance/common/exception.py
+--- glance-orig/glance/common/exception.py	2012-08-28 14:03:20.177648676 +0900
++++ glance/glance/common/exception.py	2012-08-28 14:08:47.534830297 +0900
+@@ -68,6 +68,10 @@
+                 "received \"%(received)s\"")
+ 
+ 
++class ImageNameNotUnique(GlanceException):
++    message = _("Image name is not unique. : %(name)s")
++
++
+ class NotFound(GlanceException):
+     message = _("An object with the specified identifier was not found.")
+ 

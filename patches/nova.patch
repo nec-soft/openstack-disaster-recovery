@@ -1,0 +1,65 @@
+diff -Naru nova-orig/nova/compute/api.py nova/nova/compute/api.py
+--- nova-orig/nova/compute/api.py	2012-08-28 13:50:03.693398649 +0900
++++ nova/nova/compute/api.py	2012-08-28 13:50:57.341398343 +0900
+@@ -231,6 +231,9 @@
+         strategy being performed and schedule the instance(s) for
+         creation."""
+ 
++        if self.db.instance_check_same_name(context, display_name):
++            raise exception.InstanceNameNotUnique(name=display_name)
++
+         if not metadata:
+             metadata = {}
+         if not display_description:
+diff -Naru nova-orig/nova/db/api.py nova/nova/db/api.py
+--- nova-orig/nova/db/api.py	2012-08-28 13:50:03.693398649 +0900
++++ nova/nova/db/api.py	2012-08-28 13:50:57.355771181 +0900
+@@ -638,6 +638,10 @@
+     return IMPL.instance_get_id_to_uuid_mapping(context, ids)
+ 
+ 
++def instance_check_same_name(context, display_name):
++    return IMPL.instance_check_same_name(context, display_name)
++
++
+ ###################
+ 
+ 
+diff -Naru nova-orig/nova/db/sqlalchemy/api.py nova/nova/db/sqlalchemy/api.py
+--- nova-orig/nova/db/sqlalchemy/api.py	2012-08-28 13:50:03.694445984 +0900
++++ nova/nova/db/sqlalchemy/api.py	2012-08-28 13:50:57.355771181 +0900
+@@ -1682,6 +1682,20 @@
+     return mapping
+ 
+ 
++@require_context
++def instance_check_same_name(context, display_name, session=None):
++    result = model_query(context, models.Instance, session=session,
++                         project_only=True).\
++                         filter_by(display_name=display_name).\
++                         filter_by(deleted=False).\
++                         first()
++
++    if not result:
++        return False
++
++    return True
++
++
+ ###################
+ 
+ 
+diff -Naru nova-orig/nova/exception.py nova/nova/exception.py
+--- nova-orig/nova/exception.py	2012-08-28 13:50:03.695398266 +0900
++++ nova/nova/exception.py	2012-08-28 13:50:57.329398807 +0900
+@@ -476,6 +476,10 @@
+                 "dependent volumes")
+ 
+ 
++class InstanceNameNotUnique(NovaException):
++    message = _("Instance name is not unique. : %(name)s")
++
++
+ class ISCSITargetNotFoundForVolume(NotFound):
+     message = _("No target id found for volume %(volume_id)s.")
+ 

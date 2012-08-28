@@ -1,0 +1,377 @@
+diff -Naru horizon-orig/horizon/api/nova.py horizon/horizon/api/nova.py
+--- horizon-orig/horizon/api/nova.py	2012-08-28 14:26:42.243710916 +0900
++++ horizon/horizon/api/nova.py	2012-08-28 14:41:25.139944573 +0900
+@@ -282,10 +282,10 @@
+     return novaclient(request).keypairs.list()
+ 
+ 
+-def server_create(request, name, image, flavor, key_name, user_data,
++def server_create(request, name, image, flavor, metadata, key_name, user_data,
+                   security_groups, block_device_mapping, instance_count=1):
+     return Server(novaclient(request).servers.create(
+-            name, image, flavor, userdata=user_data,
++            name, image, flavor, meta=metadata, userdata=user_data,
+             security_groups=security_groups,
+             key_name=key_name, block_device_mapping=block_device_mapping,
+             min_count=instance_count), request)
+diff -Naru horizon-orig/horizon/dashboards/nova/images_and_snapshots/images/forms.py horizon/horizon/dashboards/nova/images_and_snapshots/images/forms.py
+--- horizon-orig/horizon/dashboards/nova/images_and_snapshots/images/forms.py	2012-08-28 14:26:42.293771084 +0900
++++ horizon/horizon/dashboards/nova/images_and_snapshots/images/forms.py	2012-08-28 14:39:31.190744293 +0900
+@@ -34,6 +34,7 @@
+ from horizon import api
+ from horizon import exceptions
+ from horizon import forms
++from horizon.utils.validators import validate_instance_name
+ 
+ LOG = logging.getLogger(__name__)
+ 
+@@ -92,7 +93,8 @@
+ 
+ 
+ class LaunchForm(forms.SelfHandlingForm):
+-    name = forms.CharField(max_length=80, label=_("Server Name"))
++    name = forms.CharField(max_length=80, label=_("Server Name"),
++                           validators=[validate_instance_name])
+     image_id = forms.CharField(widget=forms.HiddenInput())
+     tenant_id = forms.CharField(widget=forms.HiddenInput())
+     user_data = forms.CharField(widget=forms.Textarea,
+@@ -100,6 +102,10 @@
+                                 required=False)
+     flavor = forms.ChoiceField(label=_("Flavor"),
+                                help_text=_("Size of image to launch."))
++    metadata = forms.CharField(label=_("Metadata"),
++                               required=False,
++                               help_text=_("Record arbitrary key/value "
++                                           "metadata."))
+     keypair = forms.ChoiceField(label=_("Keypair"),
+                                 required=False,
+                                 help_text=_("Which keypair to use for "
+@@ -169,10 +175,17 @@
+             else:
+                 dev_mapping = None
+ 
++            if(len(data['metadata']) > 0 and data['metadata'].find('=')):
++                metadata = {data['metadata'].split('=')[0]:
++                            data['metadata'].split('=')[1]}
++            else:
++                metadata = None
++
+             api.server_create(request,
+                               data['name'],
+                               data['image_id'],
+                               data['flavor'],
++                              metadata,
+                               data.get('keypair'),
+                               normalize_newlines(data.get('user_data')),
+                               data.get('security_groups'),
+diff -Naru horizon-orig/horizon/dashboards/nova/images_and_snapshots/snapshots/forms.py horizon/horizon/dashboards/nova/images_and_snapshots/snapshots/forms.py
+--- horizon-orig/horizon/dashboards/nova/images_and_snapshots/snapshots/forms.py	2012-08-28 14:26:42.294771152 +0900
++++ horizon/horizon/dashboards/nova/images_and_snapshots/snapshots/forms.py	2012-08-28 14:33:26.103780072 +0900
+@@ -28,6 +28,7 @@
+ from horizon import api
+ from horizon import exceptions
+ from horizon import forms
++from horizon.utils.validators import validate_instance_snapshot_name
+ 
+ 
+ LOG = logging.getLogger(__name__)
+@@ -38,7 +39,8 @@
+     instance_id = forms.CharField(label=_("Instance ID"),
+                                   widget=forms.TextInput(
+                                         attrs={'readonly': 'readonly'}))
+-    name = forms.CharField(max_length="20", label=_("Snapshot Name"))
++    name = forms.CharField(max_length="20", label=_("Snapshot Name"),
++                           validators=[validate_instance_snapshot_name])
+ 
+     def handle(self, request, data):
+         try:
+diff -Naru horizon-orig/horizon/dashboards/settings/api/forms.py horizon/horizon/dashboards/settings/api/forms.py
+--- horizon-orig/horizon/dashboards/settings/api/forms.py	1970-01-01 09:00:00.000000000 +0900
++++ horizon/horizon/dashboards/settings/api/forms.py	2012-08-28 15:19:33.023814766 +0900
+@@ -0,0 +1,91 @@
++# vim: tabstop=4 shiftwidth=4 softtabstop=4
++
++# Copyright 2012 NEC Soft, Ltd.
++#
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++import logging
++import socket
++
++from django import shortcuts
++from django.contrib import messages
++from django.utils.translation import ugettext_lazy as _
++
++from keystoneclient import exceptions as keystone_exceptions
++
++from horizon import api
++from horizon import forms
++
++
++LOG = logging.getLogger(__name__)
++
++
++class SetAPIUserForm(forms.SelfHandlingForm):
++    tenant = forms.CharField(widget=forms.HiddenInput())
++    user = forms.CharField(label=_("User"),
++                           widget=forms.TextInput(
++                                  attrs={'readonly': 'readonly'}
++                           ))
++    passwd = forms.CharField(label=_("Input password"),
++                             widget=forms.PasswordInput(render_value=False))
++    # forms.SelfHandlingForm doesn't pass request object as the first argument
++    # to the class __init__ method, which causes form to explode.
++    @classmethod
++    def _instantiate(cls, request, *args, **kwargs):
++        return cls(request, *args, **kwargs)
++
++    def __init__(self, request, *args, **kwargs):
++        super(SetAPIUserForm, self).__init__(*args, **kwargs)
++
++    def handle(self, request, data):
++        try:
++            tenant_id = data['tenant']
++            tenants = api.tenant_list(request)
++            for t in tenants:
++                if t.id == tenant_id:
++                    tenant_name = t.name
++
++            try:
++                unscoped_token = api.token_create(request,
++                                                  '',
++                                                  data['user'],
++                                                  data['passwd'])
++            except keystone_exceptions.Unauthorized:
++                messages.error(request, _('Invalid password.'))
++                return
++
++            keystone_url = api.url_for(request,
++                                       'identity',
++                                       endpoint_type='publicURL')
++
++            context = {'username': data['user'],
++                       'auth_url': keystone_url,
++                       'tenant_id': tenant_id,
++                       'tenant_name': tenant_name,
++                       'passwd': data['passwd']}
++
++            response = shortcuts.render(request,
++                                        'settings/api/openrc.template',
++                                        context,
++                                        content_type="text/plain")
++            host = socket.gethostname()
++            file_path = '/opt/share/env/' + host + '/openrc_' + tenant_name
++            f = open(file_path, 'w')
++            f.write(response.content)
++            f.close()
++            messages.success(request, _('OSAPI User was successfully set.'))
++
++        except Exception, e:
++            LOG.exception("Exception in SetAPIUserForm.")
++            messages.error(request, _('Error Seting OSAPI User: %s') % e)
++        return shortcuts.redirect(request.build_absolute_uri())
+diff -Naru horizon-orig/horizon/dashboards/settings/api/panel.py horizon/horizon/dashboards/settings/api/panel.py
+--- horizon-orig/horizon/dashboards/settings/api/panel.py	1970-01-01 09:00:00.000000000 +0900
++++ horizon/horizon/dashboards/settings/api/panel.py	2012-08-28 15:14:06.047615239 +0900
+@@ -0,0 +1,28 @@
++# vim: tabstop=4 shiftwidth=4 softtabstop=4
++
++# Copyright 2012 NEC Soft, Ltd.
++#
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++from django.utils.translation import ugettext_lazy as _
++
++import horizon
++from horizon.dashboards.settings import dashboard
++
++
++class APIPanel(horizon.Panel):
++    name = _("API user")
++    slug = 'api'
++
++
++dashboard.Settings.register(APIPanel)
+diff -Naru horizon-orig/horizon/dashboards/settings/api/urls.py horizon/horizon/dashboards/settings/api/urls.py
+--- horizon-orig/horizon/dashboards/settings/api/urls.py	1970-01-01 09:00:00.000000000 +0900
++++ horizon/horizon/dashboards/settings/api/urls.py	2012-08-28 15:14:50.806655537 +0900
+@@ -0,0 +1,21 @@
++# vim: tabstop=4 shiftwidth=4 softtabstop=4
++
++# Copyright 2012 NEC Soft, Ltd.
++#
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++from django.conf.urls.defaults import patterns, url
++
++
++urlpatterns = patterns('horizon.dashboards.settings.api.views',
++    url(r'^$', 'index', name='index'))
+diff -Naru horizon-orig/horizon/dashboards/settings/api/views.py horizon/horizon/dashboards/settings/api/views.py
+--- horizon-orig/horizon/dashboards/settings/api/views.py	1970-01-01 09:00:00.000000000 +0900
++++ horizon/horizon/dashboards/settings/api/views.py	2012-08-28 15:15:21.949843036 +0900
+@@ -0,0 +1,30 @@
++# vim: tabstop=4 shiftwidth=4 softtabstop=4
++
++# Copyright 2012 NEC Soft, Ltd.
++#
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
++
++from django import shortcuts
++from horizon.dashboards.settings.api.forms import SetAPIUserForm
++
++
++def index(request):
++    form, handled = SetAPIUserForm.maybe_handle(request,
++                                   initial={'tenant': request.user.tenant_id,
++                                            'user': request.user.username})
++    if handled:
++        return handled
++
++    context = {'form': form}
++
++    return shortcuts.render(request, 'settings/api/settings.html', context)
+diff -Naru horizon-orig/horizon/dashboards/settings/dashboard.py horizon/horizon/dashboards/settings/dashboard.py
+--- horizon-orig/horizon/dashboards/settings/dashboard.py	2012-08-28 14:26:42.284771129 +0900
++++ horizon/horizon/dashboards/settings/dashboard.py	2012-08-28 14:44:28.878571878 +0900
+@@ -23,7 +23,7 @@
+ class Settings(horizon.Dashboard):
+     name = _("Settings")
+     slug = "settings"
+-    panels = ('user', 'project', 'ec2')
++    panels = ('user', 'project', 'ec2', 'api')
+     default_panel = 'user'
+     nav = False
+ 
+diff -Naru horizon-orig/horizon/dashboards/settings/templates/settings/api/_openrc.html horizon/horizon/dashboards/settings/templates/settings/api/_openrc.html
+--- horizon-orig/horizon/dashboards/settings/templates/settings/api/_openrc.html	1970-01-01 09:00:00.000000000 +0900
++++ horizon/horizon/dashboards/settings/templates/settings/api/_openrc.html	2012-08-28 14:59:43.726528659 +0900
+@@ -0,0 +1,26 @@
++{% extends "horizon/common/_modal_form.html" %}
++{% load i18n %}
++
++{% block form_id %}openrc_download_form{% endblock %}
++{% block form_action %}{% url horizon:settings:api:index %}{% endblock %}
++
++{% block modal_id %}language_settings_modal{% endblock %}
++{% block modal-header %}{% trans "Download OpenStack RC File" %}{% endblock %}
++
++{% block modal-body %}
++<div class="left">
++    <fieldset>
++    {% include "horizon/common/_form_fields.html" %}
++    </fieldset>
++</div>
++<div class="right">
++    <h3>{% trans "Description:" %}</h3>
++    <p>{% trans 'Set OSAPI User for the selected project. In order to auto-communicate with OpenStack, the environment file(equivalent with openrc) is placed in shared directory.' %}</p>
++</div>
++{% endblock %}
++
++{% block modal-footer %}
++    <input class="btn btn-primary pull-right" type="submit" value="{% trans "Set API User" %}" />
++    {% if hide %}<a href="{% url horizon:settings:api:index %}" class="btn secondary cancel close">{% trans "Cancel" %}</a>{% endif %}
++{% endblock %}
++
+diff -Naru horizon-orig/horizon/dashboards/settings/templates/settings/api/openrc.template horizon/horizon/dashboards/settings/templates/settings/api/openrc.template
+--- horizon-orig/horizon/dashboards/settings/templates/settings/api/openrc.template	1970-01-01 09:00:00.000000000 +0900
++++ horizon/horizon/dashboards/settings/templates/settings/api/openrc.template	2012-08-28 15:10:59.692468337 +0900
+@@ -0,0 +1,22 @@
++#!/bin/bash
++
++# With the addition of Keystone, to use an openstack cloud you should
++# authenticate against keystone, which returns a **Token** and **Service
++# Catalog**.  The catalog contains the endpoint for all services the
++# user/tenant has access to - including nova, glance, keystone, swift.
++#
++# *NOTE*: Using the 2.0 *auth api* does not mean that compute api is 2.0.  We
++# will use the 1.1 *compute api*
++export OS_AUTH_URL={{ auth_url }}
++
++# With the addition of Keystone we have standardized on the term **tenant**
++# as the entity that owns the resources.
++export OS_TENANT_ID={{ tenant_id }}
++export OS_TENANT_NAME={{ tenant_name }}
++
++# In addition to the owning entity (tenant), openstack stores the entity
++# performing the action as the **user**.
++export OS_USERNAME={{ username }}
++
++# With Keystone you pass the keystone password.
++export OS_PASSWORD={{ passwd }}
+diff -Naru horizon-orig/horizon/dashboards/settings/templates/settings/api/settings.html horizon/horizon/dashboards/settings/templates/settings/api/settings.html
+--- horizon-orig/horizon/dashboards/settings/templates/settings/api/settings.html	1970-01-01 09:00:00.000000000 +0900
++++ horizon/horizon/dashboards/settings/templates/settings/api/settings.html	2012-08-28 14:55:59.628881171 +0900
+@@ -0,0 +1,11 @@
++{% extends 'settings/base.html' %}
++{% load i18n %}
++{% block title %}API User Setting{% endblock %}
++
++{% block page_header %}
++  {% include "horizon/common/_page_header.html" with title=_("Set OpenStack API User") %}
++{% endblock page_header %}
++
++{% block settings_main %}
++  {% include "settings/api/_openrc.html" %}
++{% endblock %}
+diff -Naru horizon-orig/horizon/utils/validators.py horizon/horizon/utils/validators.py
+--- horizon-orig/horizon/utils/validators.py	2012-08-28 14:26:42.295771090 +0900
++++ horizon/horizon/utils/validators.py	2012-08-28 14:29:21.622934650 +0900
+@@ -42,3 +42,17 @@
+ 
+ def password_validator_msg():
+     return password_config.get("help_text", _("Password is not accepted"))
++
++
++def validate_instance_name(name):
++    if name.startswith("MIG_"):
++        raise ValidationError("Can't specify the instance name to start with "\
++                              "'MIG_'.")
++
++
++def validate_instance_snapshot_name(name):
++    if (name.startswith("SNAP_") or name.startswith("COPY_") or
++        name.endswith("_KERNEL") or name.endswith("_RAMDISK")):
++        raise ValidationError("Can't specify the instance name to start with "\
++                              "'SNAP_' or 'COPY_', and to end with '_KERNEL' "\
++                              "or '_RAMDISK'.")
