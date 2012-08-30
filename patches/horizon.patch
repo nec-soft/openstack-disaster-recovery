@@ -1,6 +1,6 @@
 diff -Naru horizon-orig/horizon/api/nova.py horizon/horizon/api/nova.py
---- horizon-orig/horizon/api/nova.py	2012-08-28 14:26:42.243710916 +0900
-+++ horizon/horizon/api/nova.py	2012-08-28 14:41:25.139944573 +0900
+--- horizon-orig/horizon/api/nova.py	2012-04-04 11:13:34.000000000 +0900
++++ horizon/horizon/api/nova.py	2012-08-30 16:10:34.633410534 +0900
 @@ -282,10 +282,10 @@
      return novaclient(request).keypairs.list()
  
@@ -15,8 +15,8 @@ diff -Naru horizon-orig/horizon/api/nova.py horizon/horizon/api/nova.py
              key_name=key_name, block_device_mapping=block_device_mapping,
              min_count=instance_count), request)
 diff -Naru horizon-orig/horizon/dashboards/nova/images_and_snapshots/images/forms.py horizon/horizon/dashboards/nova/images_and_snapshots/images/forms.py
---- horizon-orig/horizon/dashboards/nova/images_and_snapshots/images/forms.py	2012-08-28 14:26:42.293771084 +0900
-+++ horizon/horizon/dashboards/nova/images_and_snapshots/images/forms.py	2012-08-28 14:39:31.190744293 +0900
+--- horizon-orig/horizon/dashboards/nova/images_and_snapshots/images/forms.py	2012-04-04 11:13:34.000000000 +0900
++++ horizon/horizon/dashboards/nova/images_and_snapshots/images/forms.py	2012-08-30 16:10:34.634398774 +0900
 @@ -34,6 +34,7 @@
  from horizon import api
  from horizon import exceptions
@@ -65,8 +65,8 @@ diff -Naru horizon-orig/horizon/dashboards/nova/images_and_snapshots/images/form
                                normalize_newlines(data.get('user_data')),
                                data.get('security_groups'),
 diff -Naru horizon-orig/horizon/dashboards/nova/images_and_snapshots/snapshots/forms.py horizon/horizon/dashboards/nova/images_and_snapshots/snapshots/forms.py
---- horizon-orig/horizon/dashboards/nova/images_and_snapshots/snapshots/forms.py	2012-08-28 14:26:42.294771152 +0900
-+++ horizon/horizon/dashboards/nova/images_and_snapshots/snapshots/forms.py	2012-08-28 14:33:26.103780072 +0900
+--- horizon-orig/horizon/dashboards/nova/images_and_snapshots/snapshots/forms.py	2012-04-04 11:13:34.000000000 +0900
++++ horizon/horizon/dashboards/nova/images_and_snapshots/snapshots/forms.py	2012-08-30 16:10:34.634398774 +0900
 @@ -28,6 +28,7 @@
  from horizon import api
  from horizon import exceptions
@@ -85,9 +85,28 @@ diff -Naru horizon-orig/horizon/dashboards/nova/images_and_snapshots/snapshots/f
  
      def handle(self, request, data):
          try:
+diff -Naru horizon-orig/horizon/dashboards/settings/api/__init__.py horizon/horizon/dashboards/settings/api/__init__.py
+--- horizon-orig/horizon/dashboards/settings/api/__init__.py	1970-01-01 09:00:00.000000000 +0900
++++ horizon/horizon/dashboards/settings/api/__init__.py	2012-08-30 16:16:33.695463136 +0900
+@@ -0,0 +1,15 @@
++# vim: tabstop=4 shiftwidth=4 softtabstop=4
++
++# Copyright 2012 NEC Soft, Ltd.
++#
++#    Licensed under the Apache License, Version 2.0 (the "License"); you may
++#    not use this file except in compliance with the License. You may obtain
++#    a copy of the License at
++#
++#         http://www.apache.org/licenses/LICENSE-2.0
++#
++#    Unless required by applicable law or agreed to in writing, software
++#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
++#    License for the specific language governing permissions and limitations
++#    under the License.
 diff -Naru horizon-orig/horizon/dashboards/settings/api/forms.py horizon/horizon/dashboards/settings/api/forms.py
 --- horizon-orig/horizon/dashboards/settings/api/forms.py	1970-01-01 09:00:00.000000000 +0900
-+++ horizon/horizon/dashboards/settings/api/forms.py	2012-08-28 15:19:33.023814766 +0900
++++ horizon/horizon/dashboards/settings/api/forms.py	2012-08-30 16:10:34.635400869 +0900
 @@ -0,0 +1,91 @@
 +# vim: tabstop=4 shiftwidth=4 softtabstop=4
 +
@@ -182,7 +201,7 @@ diff -Naru horizon-orig/horizon/dashboards/settings/api/forms.py horizon/horizon
 +        return shortcuts.redirect(request.build_absolute_uri())
 diff -Naru horizon-orig/horizon/dashboards/settings/api/panel.py horizon/horizon/dashboards/settings/api/panel.py
 --- horizon-orig/horizon/dashboards/settings/api/panel.py	1970-01-01 09:00:00.000000000 +0900
-+++ horizon/horizon/dashboards/settings/api/panel.py	2012-08-28 15:14:06.047615239 +0900
++++ horizon/horizon/dashboards/settings/api/panel.py	2012-08-30 16:10:34.635400869 +0900
 @@ -0,0 +1,28 @@
 +# vim: tabstop=4 shiftwidth=4 softtabstop=4
 +
@@ -214,7 +233,7 @@ diff -Naru horizon-orig/horizon/dashboards/settings/api/panel.py horizon/horizon
 +dashboard.Settings.register(APIPanel)
 diff -Naru horizon-orig/horizon/dashboards/settings/api/urls.py horizon/horizon/dashboards/settings/api/urls.py
 --- horizon-orig/horizon/dashboards/settings/api/urls.py	1970-01-01 09:00:00.000000000 +0900
-+++ horizon/horizon/dashboards/settings/api/urls.py	2012-08-28 15:14:50.806655537 +0900
++++ horizon/horizon/dashboards/settings/api/urls.py	2012-08-30 16:10:34.635400869 +0900
 @@ -0,0 +1,21 @@
 +# vim: tabstop=4 shiftwidth=4 softtabstop=4
 +
@@ -239,7 +258,7 @@ diff -Naru horizon-orig/horizon/dashboards/settings/api/urls.py horizon/horizon/
 +    url(r'^$', 'index', name='index'))
 diff -Naru horizon-orig/horizon/dashboards/settings/api/views.py horizon/horizon/dashboards/settings/api/views.py
 --- horizon-orig/horizon/dashboards/settings/api/views.py	1970-01-01 09:00:00.000000000 +0900
-+++ horizon/horizon/dashboards/settings/api/views.py	2012-08-28 15:15:21.949843036 +0900
++++ horizon/horizon/dashboards/settings/api/views.py	2012-08-30 16:10:34.635400869 +0900
 @@ -0,0 +1,30 @@
 +# vim: tabstop=4 shiftwidth=4 softtabstop=4
 +
@@ -272,8 +291,8 @@ diff -Naru horizon-orig/horizon/dashboards/settings/api/views.py horizon/horizon
 +
 +    return shortcuts.render(request, 'settings/api/settings.html', context)
 diff -Naru horizon-orig/horizon/dashboards/settings/dashboard.py horizon/horizon/dashboards/settings/dashboard.py
---- horizon-orig/horizon/dashboards/settings/dashboard.py	2012-08-28 14:26:42.284771129 +0900
-+++ horizon/horizon/dashboards/settings/dashboard.py	2012-08-28 14:44:28.878571878 +0900
+--- horizon-orig/horizon/dashboards/settings/dashboard.py	2012-04-04 11:13:34.000000000 +0900
++++ horizon/horizon/dashboards/settings/dashboard.py	2012-08-30 16:10:34.635400869 +0900
 @@ -23,7 +23,7 @@
  class Settings(horizon.Dashboard):
      name = _("Settings")
@@ -285,7 +304,7 @@ diff -Naru horizon-orig/horizon/dashboards/settings/dashboard.py horizon/horizon
  
 diff -Naru horizon-orig/horizon/dashboards/settings/templates/settings/api/_openrc.html horizon/horizon/dashboards/settings/templates/settings/api/_openrc.html
 --- horizon-orig/horizon/dashboards/settings/templates/settings/api/_openrc.html	1970-01-01 09:00:00.000000000 +0900
-+++ horizon/horizon/dashboards/settings/templates/settings/api/_openrc.html	2012-08-28 14:59:43.726528659 +0900
++++ horizon/horizon/dashboards/settings/templates/settings/api/_openrc.html	2012-08-30 16:10:34.636398907 +0900
 @@ -0,0 +1,26 @@
 +{% extends "horizon/common/_modal_form.html" %}
 +{% load i18n %}
@@ -315,7 +334,7 @@ diff -Naru horizon-orig/horizon/dashboards/settings/templates/settings/api/_open
 +
 diff -Naru horizon-orig/horizon/dashboards/settings/templates/settings/api/openrc.template horizon/horizon/dashboards/settings/templates/settings/api/openrc.template
 --- horizon-orig/horizon/dashboards/settings/templates/settings/api/openrc.template	1970-01-01 09:00:00.000000000 +0900
-+++ horizon/horizon/dashboards/settings/templates/settings/api/openrc.template	2012-08-28 15:10:59.692468337 +0900
++++ horizon/horizon/dashboards/settings/templates/settings/api/openrc.template	2012-08-30 16:10:34.636398907 +0900
 @@ -0,0 +1,22 @@
 +#!/bin/bash
 +
@@ -341,7 +360,7 @@ diff -Naru horizon-orig/horizon/dashboards/settings/templates/settings/api/openr
 +export OS_PASSWORD={{ passwd }}
 diff -Naru horizon-orig/horizon/dashboards/settings/templates/settings/api/settings.html horizon/horizon/dashboards/settings/templates/settings/api/settings.html
 --- horizon-orig/horizon/dashboards/settings/templates/settings/api/settings.html	1970-01-01 09:00:00.000000000 +0900
-+++ horizon/horizon/dashboards/settings/templates/settings/api/settings.html	2012-08-28 14:55:59.628881171 +0900
++++ horizon/horizon/dashboards/settings/templates/settings/api/settings.html	2012-08-30 16:10:34.636398907 +0900
 @@ -0,0 +1,11 @@
 +{% extends 'settings/base.html' %}
 +{% load i18n %}
@@ -355,8 +374,8 @@ diff -Naru horizon-orig/horizon/dashboards/settings/templates/settings/api/setti
 +  {% include "settings/api/_openrc.html" %}
 +{% endblock %}
 diff -Naru horizon-orig/horizon/utils/validators.py horizon/horizon/utils/validators.py
---- horizon-orig/horizon/utils/validators.py	2012-08-28 14:26:42.295771090 +0900
-+++ horizon/horizon/utils/validators.py	2012-08-28 14:29:21.622934650 +0900
+--- horizon-orig/horizon/utils/validators.py	2012-04-04 11:13:35.000000000 +0900
++++ horizon/horizon/utils/validators.py	2012-08-30 16:10:34.636398907 +0900
 @@ -42,3 +42,17 @@
  
  def password_validator_msg():

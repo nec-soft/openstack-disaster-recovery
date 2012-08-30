@@ -1,4 +1,4 @@
-Patched for OpenStack Disaster Recovery
+Patches for OpenStack Disaster Recovery
 ===========================
 
 It is necessary to apply these patches to use function of OpenStack Disaster Recovery.
